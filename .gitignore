@@ -1,0 +1,46 @@
+# Ansible Vault files
+*.vault
+vault_password_file
+
+# Python files
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+
+# Ansible log files
+*.log
+
+# Inventory files
+inventory/*
+
+# Playbook output files
+*.retry
+
+# SSH keys
+*.pem
+*.key
+*.pub
+
+# Environment files
+.env
+.venv/
+venv/
+env/
+
+# IDE and editor files
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Ansible roles
+roles/*/vars/secrets.yml
+
+ansible_ssh
+ansible_ssh.pub

@@ -1,0 +1,10 @@
+- name: Setup server
+  hosts: development
+  become: true
+  vars_files:
+    - ../vault.yaml
+  roles:
+    - user_management
+    - timezone_config
+    - ssh_config
+    - locale_config

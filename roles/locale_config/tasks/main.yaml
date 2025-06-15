@@ -1,0 +1,14 @@
+- name: Ensure locale is generated
+  ansible.builtin.command: locale-gen en_US.UTF-8
+  when: ansible_distribution == "Ubuntu"
+  changed_when: false
+
+- name: Ensure /etc/default/locale is set correctly
+  ansible.builtin.lineinfile:
+    path: /etc/default/locale
+    line: "LANG=en_US.UTF-8"
+    state: present
+
+- name: Update locale settings
+  ansible.builtin.command: update-locale LANG=en_US.UTF-8
+  when: ansible_distribution == "Ubuntu"
