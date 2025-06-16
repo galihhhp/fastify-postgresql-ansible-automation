@@ -1,46 +1,75 @@
-- name: Setup server
+- name: Setup application
   hosts: development
-  become: true
   vars:
-    ansible_python_interpreter: /usr/bin/python3
-    username: galihhhp
-  vars_files:
-    - vault.yaml
+    image: galihhhp/simple-fastify
+    container_name: fastify
+  become: true
   tasks:
-    - name: Install python env
+    - name: Install packages
       ansible.builtin.apt:
         name: "{{ item }}"
         state: present
         update_cache: true
       loop:
-        - python3
-        - python3-pip
-        - python3-passlib
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - software-properties-common
+        - nodejs
+        - npm
 
-    - name: Hash password using passlib
-      ansible.builtin.shell: |
-        python3 -c "from passlib.hash import sha512_crypt; print(sha512_crypt.hash('{{ password }}'))"
-      register: hashed_password
-
-    - name: Manage user account '{{ username }}'
-      ansible.builtin.user:
-        name: "{{ username }}"
-        state: present
-        home: "/home/{{ username }}"
-        password: "{{ hashed_password.stdout }}"
-        generate_ssh_key: true
-        ssh_key_bits: 2048
-        ssh_key_type: "rsa"
-        ssh_key_file: ".ssh/id_rsa"
-        ssh_key_comment: "{{ ansible_fqdn }}"
-    - name: Ensure PasswordAuthentication is set to no
-      lineinfile:
-        path: /etc/ssh/sshd_config
-        regexp: "^#?PasswordAuthentication"
-        line: "PasswordAuthentication no"
+    - name: Add Docker GPG apt Key
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
         state: present
 
-    - name: Restart SSH service
-      service:
-        name: sshd
-        state: restarted
+    - name: Add Docker Repository
+      ansible.builtin.apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu focal stable
+        state: present
+
+    - name: Update package index
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Install Docker packages
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: true
+      loop:
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+        - docker-buildx-plugin
+        - docker-compose-plugin
+
+    - name: Pull an image
+      community.docker.docker_image:
+        name: "{{ image }}"
+        source: pull
+        pull:
+          platform: amd64
+
+    - name: Check if Docker Container exists
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        image: "{{ image }}"
+        state: present
+      register: container_check
+
+    - name: Create Container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        state: present
+        image: "{{ image }}"
+        published_ports:
+          - 4000:4000
+        command: sleep infinity
+      when: not container_check.changed
+
+    - name: Start container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        image: "{{ image }}"
+        state: started
