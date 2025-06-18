@@ -1,0 +1,13 @@
+- name: Setup application
+  hosts: development
+  vars:
+    backend_image: galihhhp/fastify
+    nginx_image: nginx
+    container_name: fastify
+    nginx_container_name: nginx
+    backend_network: backend-network
+  become: true
+  roles:
+    - docker_setup
+    - app_deployment
+    - nginx_setup

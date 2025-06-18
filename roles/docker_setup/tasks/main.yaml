@@ -1,0 +1,40 @@
+- name: Add Docker GPG apt Key
+  ansible.builtin.apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Add Docker Repository
+  ansible.builtin.apt_repository:
+    repo: deb https://download.docker.com/linux/ubuntu focal stable
+    state: present
+
+- name: Update package index
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Install Docker packages
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: true
+  loop:
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+    - docker-buildx-plugin
+    - docker-compose-plugin
+
+- name: Pull an image
+  community.docker.docker_image:
+    name: "{{ item }}"
+    source: pull
+    pull:
+      platform: amd64
+  loop:
+    - "{{ backend_image }}"
+    - "{{ nginx_image }}"
+
+- name: Create a network
+  community.docker.docker_network:
+    name: "{{ backend_network }}"
+    state: present

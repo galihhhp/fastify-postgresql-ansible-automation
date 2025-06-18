@@ -1,8 +1,10 @@
 - name: Setup application
   hosts: development
   vars:
-    image: galihhhp/simple-fastify
+    backend_image: galihhhp/simple-fastify
+    nginx_image: nginx
     container_name: fastify
+    nginx_container_name: nginx
   become: true
   tasks:
     - name: Install packages
@@ -46,30 +48,72 @@
 
     - name: Pull an image
       community.docker.docker_image:
-        name: "{{ image }}"
+        name: "{{ item }}"
         source: pull
         pull:
           platform: amd64
+      loop:
+        - "{{ backend_image }}"
+        - "{{ nginx_image }}"
 
-    - name: Check if Docker Container exists
+    - name: Check if App Container exists
       community.docker.docker_container:
         name: "{{ container_name }}"
-        image: "{{ image }}"
+        image: "{{ backend_image }}"
         state: present
       register: container_check
+
+    - name: Check if Nginx Container exists
+      community.docker.docker_container:
+        name: "{{ nginx_container_name }}"
+        image: "{{ nginx }}"
+        state: present
+      register: nginx_container_check
 
     - name: Create Container
       community.docker.docker_container:
         name: "{{ container_name }}"
         state: present
-        image: "{{ image }}"
-        published_ports:
-          - 4000:4000
+        image: "{{ backend_image }}"
         command: sleep infinity
       when: not container_check.changed
 
-    - name: Start container
+    - name: Create Nginx Container
       community.docker.docker_container:
-        name: "{{ container_name }}"
-        image: "{{ image }}"
+        name: "{{ nginx_container_name }}"
+        state: present
+        image: "{{ nginx_image }}"
+        published_ports:
+          - 80:80
+        command: sleep infinity
+      when: not nginx_container_check.changed
+
+    - name: Start multiple containers
+      community.docker.docker_container:
+        name: "{{ item.name }}"
+        image: "{{ item.image }}"
         state: started
+      loop:
+        - { name: "{{ container_name }}", image: "{{ backend_image }}" }
+        - { name: "{{ nginx_container_name }}", image: "{{ nginx_image }}" }
+      register: container_start_result
+
+    - name: Check if backend container started successfully
+      debug:
+        msg: "Backend started successfully"
+      when: container_start_result.results[0].failed == false
+
+    - name: Handle failure for backend container
+      debug:
+        msg: "Failed to start backend container"
+      when: container_start_result.results[0].failed == true
+
+    - name: Check if nginx container started successfully
+      debug:
+        msg: "Nginx Container started successfully"
+      when: container_start_result.results[1].failed == false
+
+    - name: Handle failure for nginx container
+      debug:
+        msg: "Failed to start nginx container"
+      when: container_start_result.results[1].failed == true

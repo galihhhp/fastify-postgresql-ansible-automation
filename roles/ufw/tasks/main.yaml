@@ -1,0 +1,21 @@
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled
+
+- name: Allow SSH through UFW
+  community.general.ufw:
+    rule: allow
+    port: 22
+    proto: tcp
+
+- name: Allow HTTP through UFW
+  community.general.ufw:
+    rule: allow
+    port: 80
+    proto: tcp
+
+- name: Allow HTTPS through UFW
+  community.general.ufw:
+    rule: allow
+    port: 443
+    proto: tcp

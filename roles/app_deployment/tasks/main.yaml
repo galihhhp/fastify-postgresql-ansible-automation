@@ -1,0 +1,10 @@
+- name: Run App Container
+  community.docker.docker_container:
+    name: "{{ container_name }}"
+    image: "{{ backend_image }}"
+    state: started
+    recreate: true
+    networks:
+      - name: "{{ backend_network }}"
+        aliases:
+          - "{{ container_name }}"

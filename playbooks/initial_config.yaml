@@ -4,7 +4,9 @@
   vars_files:
     - ../vault.yaml
   roles:
+    - package_setup
     - user_management
     - timezone_config
     - ssh_config
     - locale_config
+    - ufw
