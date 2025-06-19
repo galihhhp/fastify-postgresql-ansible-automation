@@ -1,0 +1,70 @@
+- name: Add Docker GPG apt Key
+  ansible.builtin.apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Add Docker Repository
+  ansible.builtin.apt_repository:
+    repo: deb https://download.docker.com/linux/ubuntu focal stable
+    state: present
+
+- name: Update package index
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Install packages
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: true
+  loop:
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+    - docker-buildx-plugin
+    - docker-compose-plugin
+    - python3-pip
+    - python3-psycopg2
+    - ufw
+
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled
+
+- name: Allow SSH through UFW
+  community.general.ufw:
+    rule: allow
+    port: 22
+    proto: tcp
+
+- name: Allow Postgresql through UFW
+  community.general.ufw:
+    rule: allow
+    port: 5432
+    proto: tcp
+
+- name: Pull PostgreSQL image
+  community.docker.docker_image:
+    name: "{{ postgresql_image }}"
+    source: pull
+    pull:
+      platform: amd64
+
+- name: Create a volume
+  community.docker.docker_volume:
+    name: "{{ postgres_volume }}"
+
+- name: Run PostgreSQL container
+  community.docker.docker_container:
+    name: "{{ postgresql_container_name }}"
+    image: "{{ postgresql_image }}"
+    state: started
+    published_ports:
+      - 5432:5432
+    env:
+      POSTGRES_USER: "{{ postgres_user }}"
+      POSTGRES_PASSWORD: "{{ password }}"
+    volumes:
+      - "{{ postgres_volume }}"
+  notify:
+    - PostgreSQL Setup Complete
