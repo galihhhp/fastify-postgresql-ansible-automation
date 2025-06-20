@@ -4,12 +4,13 @@
   vars:
     postgresql_container_name: postgresql
     postgresql_image: postgres:17.5-alpine
-    postgres_user: galihhhp
-    postgres_volume: pg_data
-    db_name: tasks
+    postgresql_volume: pg_data
+    postgresql_port: "5432"
   vars_files:
     - ../vault.yaml
   roles:
-    - timezone_config
-    - locale_config
-    - postgresql
+    - common_tasks
+    - common_docker
+    - postgre_ufw
+    - role: postgre
+      tags: postgresql_setup

@@ -1,0 +1,35 @@
+- name: Install packages
+  ansible.builtin.apt:
+    name: python3-psycopg2
+    state: present
+    update_cache: true
+
+- name: Pull PostgreSQL image
+  community.docker.docker_image:
+    name: "{{ postgresql_image }}"
+    source: pull
+    pull:
+      platform: amd64
+
+- name: Create a volume
+  community.docker.docker_volume:
+    name: "{{ postgresql_volume }}"
+
+- name: Run PostgreSQL container
+  community.docker.docker_container:
+    name: "{{ postgresql_container_name }}"
+    image: "{{ postgresql_image }}"
+    state: started
+    published_ports:
+      - "{{ postgresql_port }}:5432"
+    env:
+      POSTGRES_USER: "{{ postgresql_user }}"
+      POSTGRES_PASSWORD: "{{ password }}"
+      POSTGRES_DB: "{{ postgresql_name }}"
+    volumes:
+      - "{{ postgresql_volume }}"
+    recreate: true
+  notify:
+    - PostgreSQL Setup Complete
+    - Create database if it does not exist
+    - Create task table

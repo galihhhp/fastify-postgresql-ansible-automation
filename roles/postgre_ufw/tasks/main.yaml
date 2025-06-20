@@ -1,0 +1,15 @@
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled
+
+- name: Allow SSH through UFW
+  community.general.ufw:
+    rule: allow
+    port: 22
+    proto: tcp
+
+- name: Allow Postgresql through UFW
+  community.general.ufw:
+    rule: allow
+    port: 5432
+    proto: tcp

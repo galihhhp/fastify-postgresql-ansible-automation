@@ -12,7 +12,7 @@
   ansible.builtin.apt:
     update_cache: true
 
-- name: Install Docker packages
+- name: Install packages
   ansible.builtin.apt:
     name: "{{ item }}"
     state: present
@@ -23,18 +23,4 @@
     - containerd.io
     - docker-buildx-plugin
     - docker-compose-plugin
-
-- name: Pull an image
-  community.docker.docker_image:
-    name: "{{ item }}"
-    source: pull
-    pull:
-      platform: amd64
-  loop:
-    - "{{ backend_image }}"
-    - "{{ nginx_image }}"
-
-- name: Create a network
-  community.docker.docker_network:
-    name: "{{ backend_network }}"
-    state: present
+    - python3-psycopg2

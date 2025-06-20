@@ -1,13 +1,15 @@
 - name: Setup application
-  hosts: development
+  hosts: backend
+  become: true
   vars:
-    backend_image: galihhhp/fastify:1.0.0
+    backend_image: galihhhp/fastify:1.1.0
     nginx_image: nginx
     container_name: fastify
     nginx_container_name: nginx
     backend_network: backend-network
-  become: true
+    postgresql_port: "5432"
+  vars_files:
+    - ../vault.yaml
   roles:
-    - docker_setup
     - app_deployment
-    - nginx_setup
+    - nginx

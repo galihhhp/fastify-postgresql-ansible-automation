@@ -1,0 +1,42 @@
+- name: Check for apt lock file existence
+  ansible.builtin.stat:
+    path: /var/lib/apt/lists/lock
+  register: apt_lock_file
+
+- name: Forcefully kill apt processes if lock file is found
+  ansible.builtin.shell: |
+    for pid in $(lsof -t /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock 2>/dev/null); do
+        sudo kill -9 $pid || true
+    done
+    if ps aux | grep -q '[a]pt'; then
+      echo "ERROR: APT processes still detected after attempted termination."
+      exit 1
+    fi
+  when: apt_lock_file.stat.exists
+  become: true
+
+- name: Remove stale apt lock files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /var/lib/apt/lists/lock
+    - /var/cache/apt/archives/lock
+    - /var/lib/dpkg/lock-frontend
+    - /var/lib/dpkg/lock
+  when: apt_lock_file.stat.exists or apt_lock_file is not defined
+  become: true
+
+- name: Verify apt lock files are truly absent
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - /var/lib/apt/lists/lock
+    - /var/cache/apt/archives/lock
+    - /var/lib/dpkg/lock-frontend
+    - /var/lib/dpkg/lock
+  register: verified_locks
+  when: apt_lock_file.stat.exists
+  failed_when: item.stat.exists is defined and item.stat.exists == true
+  loop_control:
+    loop_var: item

@@ -1,0 +1,50 @@
+- name: Install common system packages
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: true
+  loop:
+    - apt-transport-https
+    - ca-certificates
+    - curl
+    - software-properties-common
+    - python3
+    - python3-pip
+    - python3-passlib
+    - telnet
+    - ufw
+
+- name: Ensure locale is generated
+  ansible.builtin.command: locale-gen id_ID.UTF-8 en_US.UTF-8
+  when: ansible_distribution == "Ubuntu"
+  changed_when: false
+
+- name: Set locale environment variables
+  ansible.builtin.lineinfile:
+    path: /etc/default/locale
+    line: "{{ item }}"
+    state: present
+  loop:
+    - LANG=id_ID.UTF-8
+    - LC_ALL=id_ID.UTF-8
+    - LC_CTYPE=en_US.UTF-8
+
+- name: Update locale settings
+  ansible.builtin.command: update-locale LANG=en_US.UTF-8
+  when: ansible_distribution == "Ubuntu"
+
+- name: Set timezone to Asia/Jakarta
+  community.general.timezone:
+    name: Asia/Jakarta
+
+- name: Ensure PasswordAuthentication is set to no
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PasswordAuthentication"
+    line: "PasswordAuthentication no"
+    state: present
+
+- name: Restart SSH service
+  ansible.builtin.service:
+    name: sshd
+    state: restarted

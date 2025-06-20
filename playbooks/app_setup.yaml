@@ -1,0 +1,11 @@
+- name: Setup server
+  hosts: backend
+  become: true
+  vars_files:
+    - ../vault.yaml
+  roles:
+    - common_tasks
+    - app_package
+    - user_management
+    - app_ufw
+    - common_docker
