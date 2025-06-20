@@ -1,8 +1,8 @@
-# Ansible Node.js Deployment Automation
+# Ansible Fastify Deployment Automation
 
 ## Overview
 
-This repository provides a comprehensive guide to automating the deployment and management of Node.js applications using Ansible. The focus is on leveraging Ansible's capabilities to streamline the setup of Node.js environments, ensuring consistency and efficiency.
+This repository provides a comprehensive guide to automating the deployment and management of Fastify applications using Ansible. The focus is on leveraging Ansible's capabilities to streamline the setup of Fastify environments, ensuring consistency and efficiency.
 
 ## Table of Contents
 
@@ -25,12 +25,12 @@ This repository provides a comprehensive guide to automating the deployment and 
 
 ## Project Overview
 
-This project focuses on automating the deployment of Node.js applications using Ansible. It covers the installation of Node.js, configuration of the environment, and deployment of applications, ensuring best practices are followed throughout the process.
+This project focuses on automating the deployment of Fastify applications using Ansible. It covers the installation of Node.js, configuration of the environment, and deployment of applications, ensuring best practices are followed throughout the process.
 
 ## Prerequisites
 
 - Ansible installed on your local machine or control node.
-- Access to a server or virtual machine where Node.js will be deployed.
+- Access to a server or virtual machine where the Fastify application will be deployed.
 - Basic knowledge of Ansible and YAML syntax.
 
 ## Directory Structure
@@ -106,13 +106,13 @@ ansible-nodejs-mastery/
 
 ### Challenge 3: Database Integration - Securing & Automating Data
 
-**Objective:** Automate the installation, configuration, and security of a database for your Node.js app.
+**Objective:** Automate the installation, configuration, and security of a database for your Fastify app.
 
 **What You'll Build (Ansible Focused!):**
 
 - Ansible role/playbook to install and configure **PostgreSQL** or **MongoDB**.
 - Tasks to create **database users**, set **passwords**, and grant **permissions** (using specific database modules like `community.postgresql.postgresql_user`, `community.mongodb.mongodb_user` or shell commands).
-- Tasks to manage Node.js app environment variables with **Ansible Vault** for secrets (`ansible.builtin.template` + `ansible-vault`).
+- Tasks to manage Fastify app environment variables with **Ansible Vault** for secrets (`ansible.builtin.template` + `ansible-vault`).
 - An Ansible task to create a **basic database backup script** on the server.
 - Ansible tasks to **restore** a database (basic).
 
@@ -131,7 +131,7 @@ ansible-nodejs-mastery/
 
 **What You'll Build (Ansible Focused!):**
 
-- Convert all previous playbooks into **reusable roles** (e.g., `nodejs`, `nginx`, `database`, `app_deploy`).
+- Convert all previous playbooks into **reusable roles** (e.g., `fastify_env`, `nginx`, `database`, `app_deploy`).
 - Define **`defaults/main.yml`** for default role variables.
 - Utilize **`vars/main.yml`** and **`group_vars`/`host_vars`** for environment-specific or server-specific configurations.
 - Advanced **Jinja2 templating** for all configuration files (Nginx, process manager environment, database connection strings).
@@ -171,11 +171,11 @@ ansible-nodejs-mastery/
 
 ### Challenge 6: Monitoring & Logging Automation
 
-**Objective:** Automate the setup of basic monitoring and centralized logging for your Node.js applications.
+**Objective:** Automate the setup of basic monitoring and centralized logging for your Fastify applications.
 
 **What You'll Build (Ansible Focused!):**
 
-- Ansible tasks to install and configure a **log rotation utility** (e.g., `logrotate`) for Node.js application logs.
+- Ansible tasks to install and configure a **log rotation utility** (e.g., `logrotate`) for Fastify application logs.
 - Tasks to set up a basic **system monitoring agent** (e.g., `node_exporter` for Prometheus, or basic `atop`/`htop` installation).
 - Integrate with Docker logging and monitoring features.
 - A basic Ansible task to send a simple email notification (using `community.general.mail` or `ansible.builtin.uri` for a simple API call) when a service stops.
@@ -235,14 +235,14 @@ ansible-nodejs-mastery/
 
 ### Challenge 9: CI/CD Integration - The Ansible Automation Flow
 
-**Objective:** Integrate your Ansible playbooks with GitHub Actions for automated, continuous deployment of your Node.js app.
+**Objective:** Integrate your Ansible playbooks with GitHub Actions for automated, continuous deployment of your Fastify app.
 
 **What You'll Build (Ansible Focused!):**
 
 - A **GitHub Actions workflow** that triggers on code pushes or specific events.
 - The workflow will call your Ansible playbooks directly (e.g., using `appleboy/ssh-action` or a self-hosted runner).
 - Configure the workflow to perform **automated testing** of your Ansible playbooks (e.g., linting, syntax check, basic dry-run using `check_mode`).
-- Automated deployment of your Node.js application using your existing Ansible roles.
+- Automated deployment of your Fastify application using your existing Ansible roles.
 - Basic **rollback capability** (calling an Ansible rollback playbook).
 - Deployment **notifications** (e.g., Slack, Email) using Ansible modules.
 
