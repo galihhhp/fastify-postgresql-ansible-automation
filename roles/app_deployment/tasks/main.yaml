@@ -8,23 +8,28 @@
     - "{{ backend_image }}"
     - "{{ nginx_image }}"
 
-- name: Create a network
+- name: Check if the Docker network exists
+  ansible.builtin.command: docker network inspect "{{ backend_network }}"
+  register: network_check
+  ignore_errors: true
+
+- name: Create a network if it does not exist
   community.docker.docker_network:
     name: "{{ backend_network }}"
     state: present
+  when: network_check.rc != 0
 
 - name: Run App Container
   community.docker.docker_container:
     name: "{{ container_name }}"
     image: "{{ backend_image }}"
     state: started
-    recreate: true
     networks:
       - name: "{{ backend_network }}"
         aliases:
           - "{{ container_name }}"
     env:
-      DB_HOST: "{{ postgresql_host }}"
+      DB_HOST: "{{ postgresql_internal_ip }}"
       DB_PORT: "{{ postgresql_port }}"
       DB_USER: "{{ postgresql_user }}"
       DB_PASSWORD: "{{ password }}"

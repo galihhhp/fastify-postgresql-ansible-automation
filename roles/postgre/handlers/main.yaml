@@ -1,7 +1,7 @@
 - name: PostgreSQL Setup Complete
   ansible.builtin.wait_for:
-    host: 127.0.0.1
-    port: 5432
+    host: "{{ postgresql_internal_ip }}"
+    port: "{{ postgresql_port }}"
     delay: 5
     timeout: 180
     state: started
@@ -12,8 +12,8 @@
     state: present
     login_user: "{{ postgresql_user }}"
     login_password: "{{ password }}"
-    login_host: 127.0.0.1
-    login_port: 5432
+    login_host: "{{ postgresql_internal_ip }}"
+    login_port: "{{ postgresql_port }}"
 
 - name: Create task table
   community.postgresql.postgresql_query:
@@ -25,5 +25,5 @@
       );
     login_user: "{{ postgresql_user }}"
     login_password: "{{ password }}"
-    login_host: 127.0.0.1
-    login_port: 5432
+    login_host: "{{ postgresql_internal_ip }}"
+    login_port: "{{ postgresql_port }}"

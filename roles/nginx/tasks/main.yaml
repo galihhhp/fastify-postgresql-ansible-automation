@@ -20,7 +20,6 @@
     name: "{{ nginx_container_name }}"
     image: "{{ nginx_image }}"
     state: started
-    recreate: true
     published_ports:
       - 80:80
     networks:

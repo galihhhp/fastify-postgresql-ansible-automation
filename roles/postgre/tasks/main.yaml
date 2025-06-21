@@ -21,14 +21,13 @@
     image: "{{ postgresql_image }}"
     state: started
     published_ports:
-      - "{{ postgresql_port }}:5432"
+      - "{{ postgresql_internal_ip }}:{{ postgresql_port }}:5432"
     env:
       POSTGRES_USER: "{{ postgresql_user }}"
       POSTGRES_PASSWORD: "{{ password }}"
       POSTGRES_DB: "{{ postgresql_name }}"
     volumes:
       - "{{ postgresql_volume }}"
-    recreate: true
   notify:
     - PostgreSQL Setup Complete
     - Create database if it does not exist
