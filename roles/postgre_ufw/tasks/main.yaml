@@ -1,7 +1,3 @@
-- name: Enable UFW
-  community.general.ufw:
-    state: enabled
-
 - name: Allow SSH through UFW
   community.general.ufw:
     rule: allow
@@ -13,3 +9,7 @@
     rule: allow
     port: 5432
     proto: tcp
+
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled

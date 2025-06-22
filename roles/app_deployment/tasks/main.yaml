@@ -9,15 +9,33 @@
     - "{{ nginx_image }}"
 
 - name: Check if the Docker network exists
-  ansible.builtin.command: docker network inspect "{{ backend_network }}"
+  ansible.builtin.command: docker network inspect "{{ vm_network }}"
   register: network_check
   ignore_errors: true
 
 - name: Create a network if it does not exist
   community.docker.docker_network:
-    name: "{{ backend_network }}"
+    name: "{{ vm_network }}"
     state: present
   when: network_check.rc != 0
+
+- name: Create logs directory
+  ansible.builtin.file:
+    path: /logs
+    state: directory
+    mode: "0755"
+
+- name: Create nginx logs directory
+  ansible.builtin.file:
+    path: /logs/nginx
+    state: directory
+    mode: "0755"
+
+- name: Create fastify logs directory
+  ansible.builtin.file:
+    path: /logs/fastify
+    state: directory
+    mode: "0755"
 
 - name: Run App Container
   community.docker.docker_container:
@@ -25,9 +43,11 @@
     image: "{{ backend_image }}"
     state: started
     networks:
-      - name: "{{ backend_network }}"
+      - name: "{{ vm_network }}"
         aliases:
           - "{{ container_name }}"
+    volumes:
+      - /logs/fastify:/app/logs
     env:
       DB_HOST: "{{ postgresql_internal_ip }}"
       DB_PORT: "{{ postgresql_port }}"

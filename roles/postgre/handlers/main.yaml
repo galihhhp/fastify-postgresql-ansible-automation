@@ -1,10 +1,11 @@
 - name: PostgreSQL Setup Complete
-  ansible.builtin.wait_for:
-    host: "{{ postgresql_internal_ip }}"
-    port: "{{ postgresql_port }}"
-    delay: 5
-    timeout: 180
-    state: started
+  community.docker.docker_container_exec:
+    container: "{{ postgresql_container_name }}"
+    command: pg_isready -U {{ postgresql_user }} -d {{ postgresql_name }}
+  register: pg_ready
+  until: pg_ready.rc == 0
+  retries: 30
+  delay: 6
 
 - name: Create database if it does not exist
   community.postgresql.postgresql_db:

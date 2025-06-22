@@ -1,0 +1,88 @@
+# Buat direktori config filebeat di host
+- name: Manage file/directory '/etc/filebeat'
+  ansible.builtin.file:
+    path: "/etc/filebeat"
+    state: directory
+    mode: "0755"
+
+# Copy template config filebeat dari ansible ke host
+- name: Template file from 'filebeat.yaml.j2' to '/etc/filebeat/filebeat.yaml'
+  ansible.builtin.template:
+    src: "filebeat.yaml.j2"
+    dest: "/etc/filebeat/filebeat.yaml"
+    mode: "0644"
+
+# Stop dan hapus container filebeat yang lama (untuk fresh deployment)
+- name: Stop and remove existing Filebeat container
+  community.docker.docker_container:
+    name: filebeat
+    state: absent
+    force_kill: true
+
+# Hapus data directory lama untuk clear cache dan registry
+- name: Remove Filebeat data directory to clear cache
+  ansible.builtin.file:
+    path: "/var/lib/filebeat-data"
+    state: absent
+
+# Buat data directory baru dengan permission user 1000 (filebeat user)
+- name: Manage file/directory '/var/lib/filebeat-data'
+  ansible.builtin.file:
+    path: "/var/lib/filebeat-data"
+    state: directory
+    mode: "0755"
+    owner: "1000"
+    group: "1000"
+
+# Buat output directory untuk hasil log collection (owner root karena container run as root)
+- name: Manage file/directory '/var/log/filebeat_output'
+  ansible.builtin.file:
+    path: "/var/log/filebeat_output"
+    state: directory
+    mode: "0755"
+    owner: "0"
+    group: "0"
+
+# Download image filebeat versi 9.0.0 dari elastic registry
+- name: Pull Filebeat image
+  community.docker.docker_image:
+    name: docker.elastic.co/beats/filebeat:9.0.0
+    source: pull
+    pull:
+      platform: amd64
+
+# Jalankan container filebeat dengan mount volumes untuk akses docker logs
+- name: Run Filebeat container
+  community.docker.docker_container:
+    name: filebeat
+    image: docker.elastic.co/beats/filebeat:9.0.0
+    state: started
+    restart_policy: always # Auto restart kalau container crash
+    user: "0:0" # Run as root untuk akses docker.sock
+    volumes:
+      - /etc/filebeat:/usr/share/filebeat/config:ro # Mount config (read-only)
+      - /var/lib/filebeat-data:/var/lib/filebeat-custom-data # Mount data directory
+      - /var/log/filebeat_output:/var/log/filebeat_output # Mount output directory
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Mount docker socket (read-only)
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro # Mount container logs (read-only)
+      - /logs:/logs:ro # Mount shared log directory for dedicated log files
+    command: "filebeat -e --strict.perms=false -c /usr/share/filebeat/config/filebeat.yaml --path.data /var/lib/filebeat-custom-data"
+    networks:
+      - name: "{{ vm_network | default('bridge') }}" # Join ke network yang sama dengan app containers
+        aliases:
+          - filebeat_logger # Alias untuk komunikasi antar container (OPSIONAL - bisa dihapus karena untuk logging aja)
+
+# Wait sampai container benar-benar running sebelum lanjut
+- name: Wait for Filebeat container to be running
+  community.docker.docker_container_info:
+    name: filebeat
+  register: filebeat_container_info
+  until: filebeat_container_info.container.State.Running is defined and filebeat_container_info.container.State.Running
+  retries: 10
+  delay: 5
+
+# Restart filebeat untuk detect container baru yang mungkin udah jalan
+- name: Restart Filebeat to detect new containers
+  community.docker.docker_container:
+    name: filebeat
+    state: started

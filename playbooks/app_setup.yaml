@@ -1,6 +1,8 @@
 - name: Setup server
   hosts: backend
   become: true
+  vars:
+    vm_network: vm_network
   vars_files:
     - ../vault.yaml
   roles:

@@ -23,6 +23,7 @@
     published_ports:
       - 80:80
     networks:
-      - name: "{{ backend_network }}"
+      - name: "{{ vm_network }}"
     volumes:
       - /etc/nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - /logs/nginx:/var/log/nginx

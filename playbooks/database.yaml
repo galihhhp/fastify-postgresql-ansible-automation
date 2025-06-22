@@ -6,11 +6,15 @@
     postgresql_image: postgres:17.5-alpine
     postgresql_volume: pg_data
     postgresql_port: "5432"
+    vm_network: vm_network
+    ansible_hostname: database
+    deployment_env: development
   vars_files:
     - ../vault.yaml
   roles:
     - common_tasks
     - common_docker
     - postgre_ufw
+    - filebeat
     - role: postgre
       tags: postgresql_setup

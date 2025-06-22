@@ -26,8 +26,11 @@
       POSTGRES_USER: "{{ postgresql_user }}"
       POSTGRES_PASSWORD: "{{ password }}"
       POSTGRES_DB: "{{ postgresql_name }}"
+      POSTGRES_INITDB_ARGS: "--auth-host=md5"
     volumes:
-      - "{{ postgresql_volume }}"
+      - "{{ postgresql_volume }}:/var/lib/postgresql/data"
+    networks:
+      - name: "{{ vm_network }}"
   notify:
     - PostgreSQL Setup Complete
     - Create database if it does not exist

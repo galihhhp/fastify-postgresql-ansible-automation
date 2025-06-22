@@ -1,0 +1,92 @@
+# Input configuration - menggunakan filestream
+filebeat.inputs:
+# Docker container logs (existing)
+- type: filestream # Type baru yang replace 'container' type
+  id: docker-container-logs # Unique ID untuk input ini
+  enabled: true
+  paths:
+    - '/var/lib/docker/containers/*/*-json.log' # Path ke semua container logs di docker
+  parsers:
+    - container: # Parser khusus untuk format docker container logs
+        stream: all # Ambil stdout dan stderr
+        format: docker # Format docker json logs
+  fields: # Custom fields yang ditambahkan ke setiap log entry
+    log_source: "docker_container"
+    hostname: "{{ ansible_hostname }}" # Hostname VM dari ansible facts
+    env: "{{ deployment_env | default('development') }}" # Environment dari variable ansible
+  fields_under_root: false # Fields custom tidak di root level, tapi di fields.xxx
+  scan_frequency: 10s # Scan file baru setiap 10 detik
+  harvester_buffer_size: 16384 # Buffer size untuk baca file (16KB)
+  max_bytes: 10485760 # Max size per log line (10MB)
+
+# Nginx access logs
+- type: filestream
+  id: nginx-access-logs
+  enabled: true
+  paths:
+    - '/logs/nginx/access.log'
+  fields:
+    log_source: "nginx_access"
+    service: "nginx"
+    hostname: "{{ ansible_hostname }}"
+    env: "{{ deployment_env | default('development') }}"
+  fields_under_root: false
+  scan_frequency: 5s
+
+# Nginx error logs  
+- type: filestream
+  id: nginx-error-logs
+  enabled: true
+  paths:
+    - '/logs/nginx/error.log'
+  fields:
+    log_source: "nginx_error"
+    service: "nginx"
+    hostname: "{{ ansible_hostname }}"
+    env: "{{ deployment_env | default('development') }}"
+  fields_under_root: false
+  scan_frequency: 5s
+
+# Fastify application logs
+- type: filestream
+  id: fastify-app-logs
+  enabled: true
+  paths:
+    - '/logs/fastify/*.log'
+  fields:
+    log_source: "application"
+    service: "fastify"
+    hostname: "{{ ansible_hostname }}"
+    env: "{{ deployment_env | default('development') }}"
+  fields_under_root: false
+  scan_frequency: 5s
+
+# PostgreSQL logs
+- type: filestream
+  id: postgresql-logs
+  enabled: true
+  paths:
+    - '/logs/postgresql/*.log'
+  fields:
+    log_source: "database"
+    service: "postgresql"
+    hostname: "{{ ansible_hostname }}"
+    env: "{{ deployment_env | default('development') }}"
+  fields_under_root: false
+  scan_frequency: 10s
+
+# Output ke file lokal (bukan ke elasticsearch/logstash)
+output.file:
+  path: "/var/log/filebeat_output" # Directory output
+  filename: "filebeat_collected.log" # Nama file output
+  codec.json: # Format output dalam JSON
+    pretty: true # JSON yang readable (indented)
+
+# Logging configuration untuk filebeat itu sendiri
+logging.level: info # Log level filebeat
+logging.to_files: true # Log filebeat ke file
+logging.files:
+  path: /var/log/filebeat # Path log filebeat
+  name: filebeat # Nama file log
+  keepfiles: 7 # Simpan 7 file log terakhir
+  permissions: 0644 # Permission file log

@@ -1,3 +1,11 @@
+- name: Clean apt cache
+  ansible.builtin.shell: |
+    rm -rf /var/cache/apt/*
+    apt-get clean
+    apt-get update
+  failed_when: result.rc not in [0, 100]
+  register: result
+
 - name: Install common system packages
   ansible.builtin.apt:
     name: "{{ item }}"
