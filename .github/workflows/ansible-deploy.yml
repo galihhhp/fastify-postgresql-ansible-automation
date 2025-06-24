@@ -30,26 +30,25 @@ jobs:
           mkdir -p inventory
           echo "${{ secrets.ANSIBLE_INVENTORY }}" > inventory/hosts.ini
 
-      - name: Create Ansible Vault password file
-        run: echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > ~/.vault_pass.txt
+      - name: Create Vault Password File
+        run: echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > ~/vault_pass.txt
 
       - name: Syntax Check (Dry Run)
         run: |
-          ansible-playbook playbooks/elk.yaml --syntax-check --vault-password-file ~/.vault_pass.txt
-          ansible-playbook playbooks/app_setup.yaml --syntax-check --vault-password-file ~/.vault_pass.txt
-          ansible-playbook playbooks/app.yaml --syntax-check --vault-password-file ~/.vault_pass.txt
-          ansible-playbook playbooks/database.yaml --syntax-check --vault-password-file ~/.vault_pass.txt
+          ansible-playbook playbooks/elk.yaml --syntax-check --vault-password-file ~/vault_pass.txt
+          ansible-playbook playbooks/app_setup.yaml --syntax-check --vault-password-file ~/vault_pass.txt
+          ansible-playbook playbooks/app.yaml --syntax-check --vault-password-file ~/vault_pass.txt
+          ansible-playbook playbooks/database.yaml --syntax-check --vault-password-file ~/vault_pass.txt
 
-      - name: Run All Ansible Playbooks (Deploy to Dev)
+      - name: Setup Control Node
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEV_HOST }}
           username: ${{ secrets.DEV_USER }}
           key: ${{ secrets.DEV_SSH_KEY }}
           script: |
-            if ! command -v ansible-playbook &> /dev/null; then
-              python3 -m pip install --user ansible
-            fi
+            sudo apt update && sudo apt install -y python3 python3-pip
+            sudo pip3 install ansible
 
             if [ ! -d ~/ansible ]; then
               git clone https://github.com/galihhhp/fastify-postgresql-ansible-automation.git ~/ansible
@@ -57,10 +56,17 @@ jobs:
               cd ~/ansible && git pull origin main
             fi
 
-            echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > ~/.vault_pass.txt
+            echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > ~/vault_pass.txt
 
+      - name: Run Ansible Playbooks
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.DEV_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          script: |
             cd ~/ansible
-            ansible-playbook playbooks/elk.yaml -i inventory/hosts.ini --vault-password-file ~/.vault_pass.txt
-            ansible-playbook playbooks/app_setup.yaml -i inventory/hosts.ini --vault-password-file ~/.vault_pass.txt
-            ansible-playbook playbooks/app.yaml -i inventory/hosts.ini --vault-password-file ~/.vault_pass.txt
-            ansible-playbook playbooks/database.yaml -i inventory/hosts.ini --vault-password-file ~/.vault_pass.txt
+            ansible-playbook playbooks/elk.yaml -i inventory/hosts.ini --vault-password-file vault_pass.txt
+            ansible-playbook playbooks/app_setup.yaml -i inventory/hosts.ini --vault-password-file vault_pass.txt
+            ansible-playbook playbooks/app.yaml -i inventory/hosts.ini --vault-password-file vault_pass.txt
+            ansible-playbook playbooks/database.yaml -i inventory/hosts.ini --vault-password-file vault_pass.txt
