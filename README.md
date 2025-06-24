@@ -33,6 +33,11 @@ This project focuses on automating the deployment of Fastify applications using 
 - Access to a server or virtual machine where the Fastify application will be deployed.
 - Basic knowledge of Ansible and YAML syntax.
 - **Recommended OS:** This guide is developed and tested on **Ubuntu 24.04.2 LTS**. It is highly recommended to use the same OS version for best compatibility and to avoid unexpected issues.
+- **Infrastructure Requirement:** This project requires 4 virtual machines (VMs):
+  - **Backend VM:** Runs Nginx, the Fastify app, and Filebeat
+  - **Database VM:** Runs PostgreSQL and Filebeat
+  - **ELK VM:** Runs the Elasticsearch and Kibana
+  - **CI/CD VM:** Acts as the Ansible control node for automation and deployment
 
 ## Directory Structure
 

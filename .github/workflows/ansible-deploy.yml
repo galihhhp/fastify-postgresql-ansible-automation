@@ -1,0 +1,51 @@
+name: Ansible CI/CD Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  ansible-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Install Ansible & Lint
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible ansible-lint
+
+      - name: Lint Ansible Playbooks
+        run: ansible-lint .
+
+      - name: Syntax Check (Dry Run)
+        run: |
+          ansible-playbook playbooks/elk.yaml --syntax-check
+          ansible-playbook playbooks/app_setup.yaml --syntax-check
+          ansible-playbook playbooks/app.yaml --syntax-check
+          ansible-playbook playbooks/database.yaml --syntax-check
+
+      - name: Run All Ansible Playbooks (Deploy to Dev)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.DEV_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          script: |
+            if [ ! -d /ansible ]; then
+              git clone https://github.com/galihhhp/fastify-postgresql-ansible-automation.git /ansible;
+            else
+              cd /ansible && git pull origin main;
+            fi
+            cd /ansible
+            ansible-playbook playbooks/elk.yaml -i inventory/hosts.ini
+            ansible-playbook playbooks/app_setup.yaml -i inventory/hosts.ini
+            ansible-playbook playbooks/app.yaml -i inventory/hosts.ini
+            ansible-playbook playbooks/database.yaml -i inventory/hosts.ini
