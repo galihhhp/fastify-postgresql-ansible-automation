@@ -1,0 +1,20 @@
+- name: Setup ELK
+  hosts: elk
+  become: true
+  module_defaults:
+    ansible.builtin.gather_facts:
+      gather_timeout: 30
+    ansible.builtin.setup:
+      gather_timeout: 30
+  vars:
+    elasticsearch_image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    kibana_image: docker.elastic.co/kibana/kibana:8.11.0
+    vm_network: monitoring_network
+  vars_files:
+    - ../vault.yaml
+  roles:
+    - common_tasks
+    - common_docker
+    - elk_ufw
+    - elasticsearch
+    - kibana

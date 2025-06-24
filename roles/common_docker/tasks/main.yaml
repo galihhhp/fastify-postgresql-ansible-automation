@@ -5,33 +5,82 @@
     apt-get update
   failed_when: result.rc not in [0, 100]
   register: result
+  changed_when: result.rc == 0
 
-- name: Add Docker GPG apt Key
-  ansible.builtin.apt_key:
-    url: https://download.docker.com/linux/ubuntu/gpg
-    state: present
+- name: Uninstall conflicting Docker packages
+  ansible.builtin.apt:
+    name:
+      - docker.io
+      - docker-compose
+      - docker-compose-v2
+      - docker-doc
+      - podman-docker
+      - containerd
+      - runc
+    state: absent
+    purge: true
 
-- name: Add Docker Repository
+- name: Create keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Download Docker GPG key with error handling
+  ansible.builtin.shell: |
+    set -e
+    echo "Downloading GPG key..."
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    echo "Download completed, file size:"
+    ls -la /etc/apt/keyrings/docker.asc
+    chmod a+r /etc/apt/keyrings/docker.asc
+    echo "Permissions set"
+  register: gpg_download_result
+  failed_when: gpg_download_result.rc != 0
+
+- name: Show download result
+  ansible.builtin.debug:
+    var: gpg_download_result
+
+- name: Verify GPG key was downloaded successfully
+  ansible.builtin.stat:
+    path: /etc/apt/keyrings/docker.asc
+  register: gpg_file_stat
+
+- name: Show GPG file details for debugging
+  ansible.builtin.debug:
+    var: gpg_file_stat
+
+- name: Fail if GPG key is empty or missing
+  ansible.builtin.fail:
+    msg: "Docker GPG key download failed or file is empty"
+  when: not gpg_file_stat.stat.exists or gpg_file_stat.stat.size == 0
+
+- name: Add Docker repository
   ansible.builtin.apt_repository:
-    repo: deb https://download.docker.com/linux/ubuntu focal stable
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
     state: present
+    filename: docker
 
-- name: Update package index
+- name: Update apt after adding Docker repo
   ansible.builtin.apt:
     update_cache: true
 
-- name: Install packages
+- name: Install Docker Engine
   ansible.builtin.apt:
-    name: "{{ item }}"
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
     state: present
-    update_cache: true
-  loop:
-    - docker-ce
-    - docker-ce-cli
-    - containerd.io
-    - docker-buildx-plugin
-    - docker-compose-plugin
-    - python3-psycopg2
+
+- name: Start and enable Docker service
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
 
 - name: Create Docker network if it does not exist
   community.docker.docker_network:

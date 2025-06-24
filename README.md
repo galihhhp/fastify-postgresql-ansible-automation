@@ -32,6 +32,7 @@ This project focuses on automating the deployment of Fastify applications using 
 - Ansible installed on your local machine or control node.
 - Access to a server or virtual machine where the Fastify application will be deployed.
 - Basic knowledge of Ansible and YAML syntax.
+- **Recommended OS:** This guide is developed and tested on **Ubuntu 24.04.2 LTS**. It is highly recommended to use the same OS version for best compatibility and to avoid unexpected issues.
 
 ## Directory Structure
 

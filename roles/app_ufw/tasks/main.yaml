@@ -1,3 +1,7 @@
+- name: Reset UFW to defaults
+  community.general.ufw:
+    state: reset
+
 - name: Allow SSH through UFW
   community.general.ufw:
     rule: allow

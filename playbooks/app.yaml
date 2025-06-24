@@ -2,7 +2,7 @@
   hosts: backend
   become: true
   vars:
-    backend_image: galihhhp/fastify:2.0
+    backend_image: galihhhp/fastify:3.0
     nginx_image: nginx
     container_name: fastify
     nginx_container_name: nginx

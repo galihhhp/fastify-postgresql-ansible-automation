@@ -1,0 +1,21 @@
+- name: Ensure SSH is always allowed FIRST
+  community.general.ufw:
+    rule: allow
+    port: 22
+    proto: tcp
+    state: enabled
+
+- name: Configure other UFW rules
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    src: "{{ item.src | default(omit) }}"
+  loop:
+    - { port: 5601, proto: tcp }
+    - { port: 9200, proto: tcp, src: "{{ backend_internal_ip }}" }
+    - { port: 9200, proto: tcp, src: "{{ postgresql_internal_ip }}" }
+
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled

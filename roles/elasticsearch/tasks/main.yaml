@@ -1,0 +1,64 @@
+- name: Create Elasticsearch data directory
+  ansible.builtin.file:
+    path: /var/lib/elasticsearch-data
+    state: directory
+    mode: "0750" # rwxr-x---
+    owner: "1000"
+    group: "1000"
+
+- name: Pull Elasticsearch image
+  community.docker.docker_image:
+    name: "{{ elasticsearch_image }}"
+    source: pull
+    pull:
+      platform: amd64
+
+- name: Run Elasticsearch container
+  community.docker.docker_container:
+    name: elasticsearch
+    image: "{{ elasticsearch_image }}"
+    state: started
+    restart_policy: always
+    env:
+      ES_JAVA_OPTS: "-Xms1g -Xmx1g"
+      discovery.type: "single-node"
+      xpack.security.enabled: "false"
+      cluster.routing.allocation.disk.threshold_enabled: "false"
+    volumes:
+      - /var/lib/elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - name: "{{ vm_network }}"
+    published_ports:
+      - "{{ elk_internal_ip }}:9200:9200"
+
+- name: Check if Elasticsearch container is running
+  community.docker.docker_container_info:
+    name: elasticsearch
+  register: es_container_info
+
+- name: Show container status
+  ansible.builtin.debug:
+    msg: "Container state: {{ es_container_info.container.State.Status if es_container_info.exists else 'not found' }}"
+
+- name: Get Elasticsearch logs if container exists
+  community.docker.docker_container_exec:
+    container: elasticsearch
+    command: cat /usr/share/elasticsearch/logs/elasticsearch.log
+  register: es_logs
+  when: es_container_info.exists
+  ignore_errors: true
+
+- name: Show Elasticsearch logs
+  ansible.builtin.debug:
+    var: es_logs.stdout_lines
+  when: es_container_info.exists and es_logs is defined
+
+- name: Wait for Elasticsearch to be ready
+  ansible.builtin.uri:
+    url: http://localhost:9200
+    method: GET
+    status_code: 200
+    timeout: 5
+  retries: 12
+  delay: 5
+  register: elasticsearch_ready

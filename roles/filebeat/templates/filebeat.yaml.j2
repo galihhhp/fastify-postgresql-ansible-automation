@@ -1,23 +1,22 @@
 # Input configuration - menggunakan filestream
 filebeat.inputs:
-# Docker container logs (existing)
-- type: filestream # Type baru yang replace 'container' type
-  id: docker-container-logs # Unique ID untuk input ini
+# Docker container logs - specifically for Fastify app
+- type: filestream
+  id: fastify-docker-logs
   enabled: true
   paths:
-    - '/var/lib/docker/containers/*/*-json.log' # Path ke semua container logs di docker
+    - '/var/lib/docker/containers/*/*-json.log'
   parsers:
-    - container: # Parser khusus untuk format docker container logs
-        stream: all # Ambil stdout dan stderr
-        format: docker # Format docker json logs
-  fields: # Custom fields yang ditambahkan ke setiap log entry
-    log_source: "docker_container"
-    hostname: "{{ ansible_hostname }}" # Hostname VM dari ansible facts
-    env: "{{ deployment_env | default('development') }}" # Environment dari variable ansible
-  fields_under_root: false # Fields custom tidak di root level, tapi di fields.xxx
-  scan_frequency: 10s # Scan file baru setiap 10 detik
-  harvester_buffer_size: 16384 # Buffer size untuk baca file (16KB)
-  max_bytes: 10485760 # Max size per log line (10MB)
+    - container:
+        stream: stdout
+        format: docker
+  fields:
+    log_source: "fastify_app"
+    service: "fastify"
+    hostname: "{{ ansible_hostname }}"
+    env: "{{ deployment_env | default('development') }}"
+  fields_under_root: false
+  scan_frequency: 5s
 
 # Nginx access logs
 - type: filestream
@@ -47,20 +46,6 @@ filebeat.inputs:
   fields_under_root: false
   scan_frequency: 5s
 
-# Fastify application logs
-- type: filestream
-  id: fastify-app-logs
-  enabled: true
-  paths:
-    - '/logs/fastify/*.log'
-  fields:
-    log_source: "application"
-    service: "fastify"
-    hostname: "{{ ansible_hostname }}"
-    env: "{{ deployment_env | default('development') }}"
-  fields_under_root: false
-  scan_frequency: 5s
-
 # PostgreSQL logs
 - type: filestream
   id: postgresql-logs
@@ -75,12 +60,76 @@ filebeat.inputs:
   fields_under_root: false
   scan_frequency: 10s
 
-# Output ke file lokal (bukan ke elasticsearch/logstash)
+# DUAL OUTPUT CONFIGURATION
+# Primary output ke Elasticsearch (ELK Server) jika tersedia
+{% if elk_internal_ip is defined and elk_internal_ip != '' %}
+output.elasticsearch:
+  hosts: ["{{ elk_internal_ip }}:9200"]
+  index: "filebeat-{{ ansible_hostname }}-%{+yyyy.MM.dd}"
+  template.name: "filebeat-{{ ansible_hostname }}"
+  template.pattern: "filebeat-{{ ansible_hostname }}-*"
+  
+  # Retry configuration jika ELK server down
+  max_retries: 3
+  backoff.init: 1s
+  backoff.max: 60s
+  timeout: 90s
+  
+  # Buffer untuk handle network issues
+  bulk_max_size: 1600
+  worker: 1
+{% else %}
+# Fallback ke file output jika ELK server tidak tersedia
 output.file:
-  path: "/var/log/filebeat_output" # Directory output
-  filename: "filebeat_collected.log" # Nama file output
-  codec.json: # Format output dalam JSON
-    pretty: true # JSON yang readable (indented)
+  path: "/var/log/filebeat_output"
+  filename: "filebeat_collected"
+  rotate_every_kb: 10000
+  number_of_files: 7
+  codec.json:
+    pretty: true
+{% endif %}
+
+# Processors untuk enrich data (IMPROVED)
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_docker_metadata:
+      host: "unix:///var/run/docker.sock"
+      match_fields: ["container.id"]
+  
+  # Decode Winston JSON logs from Docker containers
+  - decode_json_fields:
+      fields: ["message"]
+      target: "app"
+      overwrite_keys: true
+      add_error_key: true
+      when:
+        contains:
+          fields.service: "fastify"
+  
+  # Add timestamp untuk local backup
+  - timestamp:
+      field: "@timestamp"
+      layouts:
+        - '2006-01-02T15:04:05.000Z'
+      test:
+        - '2019-06-22T16:33:51.000Z'
+
+# Setup template dan dashboard (only if ELK server available)
+{% if elk_internal_ip is defined and elk_internal_ip != '' %}
+setup.template.enabled: true
+setup.template.name: "filebeat-{{ ansible_hostname }}"
+setup.template.pattern: "filebeat-{{ ansible_hostname }}-*"
+setup.dashboards.enabled: false  # Manual setup recommended
+setup.kibana:
+  host: "{{ elk_internal_ip }}:5601"
+{% endif %}
+
+# Queue configuration untuk handle network outages
+queue.mem:
+  events: 4096
+  flush.min_events: 512
+  flush.timeout: 1s
 
 # Logging configuration untuk filebeat itu sendiri
 logging.level: info # Log level filebeat
@@ -90,3 +139,14 @@ logging.files:
   name: filebeat # Nama file log
   keepfiles: 7 # Simpan 7 file log terakhir
   permissions: 0644 # Permission file log
+
+# LOCAL BACKUP CONFIGURATION
+# Always keep local copies dengan logrotate
+logging.event_data:
+  to_files: true
+  files:
+    path: /var/log/filebeat_backup
+    name: "logs-backup-{{ ansible_hostname }}"
+    rotateeverybytes: 10485760  # 10MB
+    keepfiles: 30  # Keep 30 days
+    permissions: 0644

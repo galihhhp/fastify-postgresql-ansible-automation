@@ -1,0 +1,40 @@
+- name: Create Kibana data directory
+  ansible.builtin.file:
+    path: /var/lib/kibana-data
+    state: directory
+    mode: "0755" # rwxr-xr-x
+    owner: "1000"
+    group: "1000"
+
+- name: Pull Kibana image
+  community.docker.docker_image:
+    name: "{{ kibana_image }}"
+    source: pull
+    pull:
+      platform: amd64
+
+- name: Run Kibana container
+  community.docker.docker_container:
+    name: kibana
+    image: "{{ kibana_image }}"
+    state: started
+    restart_policy: always
+    env:
+      ELASTICSEARCH_HOSTS: "http://elasticsearch:9200"
+      server.host: "0.0.0.0"
+      server.name: "kibana"
+    volumes:
+      - /var/lib/kibana-data:/usr/share/kibana/data
+    networks:
+      - name: "{{ vm_network }}"
+    published_ports:
+      - "5601:5601"
+
+- name: Wait for Kibana to be ready
+  ansible.builtin.uri:
+    url: http://localhost:5601
+    method: GET
+    status_code: 200
+  retries: 30
+  delay: 10
+  register: kibana_ready

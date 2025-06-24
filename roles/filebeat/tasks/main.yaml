@@ -43,6 +43,15 @@
     owner: "0"
     group: "0"
 
+# Buat backup directory untuk local log copies
+- name: Manage file/directory '/var/log/filebeat_backup'
+  ansible.builtin.file:
+    path: "/var/log/filebeat_backup"
+    state: directory
+    mode: "0755"
+    owner: "0"
+    group: "0"
+
 # Download image filebeat versi 9.0.0 dari elastic registry
 - name: Pull Filebeat image
   community.docker.docker_image:
@@ -63,6 +72,7 @@
       - /etc/filebeat:/usr/share/filebeat/config:ro # Mount config (read-only)
       - /var/lib/filebeat-data:/var/lib/filebeat-custom-data # Mount data directory
       - /var/log/filebeat_output:/var/log/filebeat_output # Mount output directory
+      - /var/log/filebeat_backup:/var/log/filebeat_backup # Mount backup directory
       - /var/run/docker.sock:/var/run/docker.sock:ro # Mount docker socket (read-only)
       - /var/lib/docker/containers:/var/lib/docker/containers:ro # Mount container logs (read-only)
       - /logs:/logs:ro # Mount shared log directory for dedicated log files
