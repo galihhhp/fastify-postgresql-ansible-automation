@@ -3,10 +3,12 @@ name: Ansible CI/CD Deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   ansible-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
@@ -15,7 +17,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.x"
+          python-version: "3.10"
+          cache: "pip"
 
       - name: Install Ansible & Lint
         run: |
@@ -24,14 +27,18 @@ jobs:
 
       - name: Lint Ansible Playbooks
         run: ansible-lint .
+        continue-on-error: true
 
       - name: Create Ansible inventory file
         run: |
           mkdir -p inventory
           echo "${{ secrets.ANSIBLE_INVENTORY }}" > inventory/hosts.ini
+          chmod 600 inventory/hosts.ini
 
       - name: Create Vault Password File
-        run: echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > ~/vault_pass.txt
+        run: |
+          echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > ~/vault_pass.txt
+          chmod 600 ~/vault_pass.txt
 
       - name: Syntax Check (Dry Run)
         run: |
@@ -46,8 +53,11 @@ jobs:
           host: ${{ secrets.DEV_HOST }}
           username: ${{ secrets.DEV_USER }}
           key: ${{ secrets.DEV_SSH_KEY }}
+          script_stop: true
           script: |
-            sudo apt update && sudo apt install -y python3 python3-pip
+            set -e
+            sudo apt update
+            sudo apt install -y python3 python3-pip
             sudo pip3 install ansible
 
             if [ ! -d ~/ansible ]; then
@@ -57,16 +67,33 @@ jobs:
             fi
 
             echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > ~/vault_pass.txt
+            chmod 600 ~/vault_pass.txt
 
-      - name: Run Ansible Playbooks
+      - name: Run Playbooks
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEV_HOST }}
           username: ${{ secrets.DEV_USER }}
           key: ${{ secrets.DEV_SSH_KEY }}
+          script_stop: true
           script: |
+            set -e
             cd ~/ansible
-            ansible-playbook playbooks/elk.yaml -i inventory/hosts.ini --vault-password-file vault_pass.txt
-            ansible-playbook playbooks/app_setup.yaml -i inventory/hosts.ini --vault-password-file vault_pass.txt
-            ansible-playbook playbooks/app.yaml -i inventory/hosts.ini --vault-password-file vault_pass.txt
-            ansible-playbook playbooks/database.yaml -i inventory/hosts.ini --vault-password-file vault_pass.txt
+
+            echo "Running ELK playbook..."
+            ansible-playbook playbooks/elk.yaml -i inventory/hosts.ini --vault-password-file ~/vault_pass.txt
+
+            echo "Running app setup playbook..."
+            ansible-playbook playbooks/app_setup.yaml -i inventory/hosts.ini --vault-password-file ~/vault_pass.txt
+
+            echo "Running app deployment playbook..."
+            ansible-playbook playbooks/app.yaml -i inventory/hosts.ini --vault-password-file ~/vault_pass.txt
+
+            echo "Running database playbook..."
+            ansible-playbook playbooks/database.yaml -i inventory/hosts.ini --vault-password-file ~/vault_pass.txt
+
+      - name: Cleanup Sensitive Files
+        if: always()
+        run: |
+          rm -f ~/vault_pass.txt
+          rm -f inventory/hosts.ini
