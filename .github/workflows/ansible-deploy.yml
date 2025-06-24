@@ -28,6 +28,10 @@ jobs:
       - name: Create Ansible Vault password file
         run: echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > ~/.vault_pass.txt
 
+      - name: Debug - Show vault password value
+        run: |
+          echo "Vault password value: $(cat ~/.vault_pass.txt)"
+
       - name: Create Ansible inventory file
         run: |
           mkdir -p inventory
