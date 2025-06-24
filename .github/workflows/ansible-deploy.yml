@@ -25,12 +25,20 @@ jobs:
       - name: Lint Ansible Playbooks
         run: ansible-lint .
 
+      - name: Create Ansible Vault password file
+        run: echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > ~/.vault_pass.txt
+
+      - name: Create Ansible inventory file
+        run: |
+          mkdir -p inventory
+          echo "${{ secrets.ANSIBLE_INVENTORY }}" > inventory/hosts.ini
+
       - name: Syntax Check (Dry Run)
         run: |
-          ansible-playbook playbooks/elk.yaml --syntax-check
-          ansible-playbook playbooks/app_setup.yaml --syntax-check
-          ansible-playbook playbooks/app.yaml --syntax-check
-          ansible-playbook playbooks/database.yaml --syntax-check
+          ansible-playbook playbooks/elk.yaml --syntax-check --vault-password-file ~/.vault_pass.txt
+          ansible-playbook playbooks/app_setup.yaml --syntax-check --vault-password-file ~/.vault_pass.txt
+          ansible-playbook playbooks/app.yaml --syntax-check --vault-password-file ~/.vault_pass.txt
+          ansible-playbook playbooks/database.yaml --syntax-check --vault-password-file ~/.vault_pass.txt
 
       - name: Run All Ansible Playbooks (Deploy to Dev)
         uses: appleboy/ssh-action@v1.0.3
@@ -45,7 +53,7 @@ jobs:
               cd /ansible && git pull origin main;
             fi
             cd /ansible
-            ansible-playbook playbooks/elk.yaml -i inventory/hosts.ini
-            ansible-playbook playbooks/app_setup.yaml -i inventory/hosts.ini
-            ansible-playbook playbooks/app.yaml -i inventory/hosts.ini
-            ansible-playbook playbooks/database.yaml -i inventory/hosts.ini
+            ansible-playbook playbooks/elk.yaml -i inventory/hosts.ini --vault-password-file ~/.vault_pass.txt
+            ansible-playbook playbooks/app_setup.yaml -i inventory/hosts.ini --vault-password-file ~/.vault_pass.txt
+            ansible-playbook playbooks/app.yaml -i inventory/hosts.ini --vault-password-file ~/.vault_pass.txt
+            ansible-playbook playbooks/database.yaml -i inventory/hosts.ini --vault-password-file ~/.vault_pass.txt
