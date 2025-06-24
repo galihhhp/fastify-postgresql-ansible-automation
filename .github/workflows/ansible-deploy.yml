@@ -25,13 +25,6 @@ jobs:
       - name: Lint Ansible Playbooks
         run: ansible-lint .
 
-      - name: Create Ansible Vault password file
-        run: echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > ~/.vault_pass.txt
-
-      - name: Debug - Show vault password value
-        run: |
-          echo "Vault password value: $(cat ~/.vault_pass.txt)"
-
       - name: Create Ansible inventory file
         run: |
           mkdir -p inventory
@@ -51,12 +44,24 @@ jobs:
           username: ${{ secrets.DEV_USER }}
           key: ${{ secrets.DEV_SSH_KEY }}
           script: |
-            if [ ! -d /ansible ]; then
-              git clone https://github.com/galihhhp/fastify-postgresql-ansible-automation.git /ansible;
-            else
-              cd /ansible && git pull origin main;
+            if ! command -v python3 &> /dev/null; then
+              sudo apt update
+              sudo apt install -y python3 python3-pip
             fi
-            cd /ansible
+
+            if ! command -v ansible-playbook &> /dev/null; then
+              python3 -m pip install --user ansible
+            fi
+
+            if [ ! -d ~/ansible ]; then
+              git clone https://github.com/galihhhp/fastify-postgresql-ansible-automation.git ~/ansible
+            else
+              cd ~/ansible && git pull origin main
+            fi
+
+            echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > ~/.vault_pass.txt
+
+            cd ~/ansible
             ansible-playbook playbooks/elk.yaml -i inventory/hosts.ini --vault-password-file ~/.vault_pass.txt
             ansible-playbook playbooks/app_setup.yaml -i inventory/hosts.ini --vault-password-file ~/.vault_pass.txt
             ansible-playbook playbooks/app.yaml -i inventory/hosts.ini --vault-password-file ~/.vault_pass.txt
